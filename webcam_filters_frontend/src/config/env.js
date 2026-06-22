@@ -14,9 +14,16 @@ export function getRuntimeConfig() {
     "http://localhost:4000";
 
   // Prefer explicit WS URL, otherwise derive from API base.
-  const wsUrl =
+  //
+  // REACT_APP_WS_URL may be provided either as:
+  //  - a base URL:      ws://host:port
+  //  - a full endpoint: ws://host:port/ws
+  //
+  // Our WS client appends "/ws" elsewhere, so normalize to a base URL here.
+  const wsUrl = normalizeWsBaseUrl(
     process.env.REACT_APP_WS_URL ||
-    apiBase.replace(/^http/i, "ws").replace(/\/+$/, "");
+      apiBase.replace(/^http/i, "ws").replace(/\/+$/, "")
+  );
 
   const frontendUrl =
     process.env.REACT_APP_FRONTEND_URL || window.location.origin;
@@ -30,7 +37,7 @@ export function getRuntimeConfig() {
 
   return {
     apiBase: apiBase.replace(/\/+$/, ""),
-    wsUrl: wsUrl.replace(/\/+$/, ""),
+    wsUrl: String(wsUrl || "").replace(/\/+$/, ""),
     frontendUrl,
     logLevel,
     featureFlags,
@@ -45,4 +52,14 @@ function safeJsonParse(value, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function normalizeWsBaseUrl(value) {
+  if (!value) return value;
+  const trimmed = String(value).replace(/\/+$/, "");
+  // If caller supplied ".../ws", normalize back to base URL.
+  if (trimmed.toLowerCase().endsWith("/ws")) {
+    return trimmed.slice(0, -3);
+  }
+  return trimmed;
 }
